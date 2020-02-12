@@ -85,16 +85,24 @@ class IntersectionState(RandableEnum):
 	RED = 'RED'
 
 class Turn(RandableEnum):
-	LEFT = "LEFT"
-	RIGHT = "RIGHT"
-	STRAIGHT = "STRAIGHT"
+	RIGHT = -1
+	STRAIGHT = 0
+	LEFT = 1
 
 class Direction(RandableEnum):
-	UP = "UP"
-	DOWN = "DOWN"
-	LEFT = "LEFT"
-	RIGHT = "RIGHT"
-
+	UP = 1
+	LEFT = 2
+	DOWN = 3
+	RIGHT = 4
+	
+	def turn(self, turn):
+		if (self == Direction.UP and turn == Turn.RIGHT):
+			return Direction.RIGHT
+		elif (self == Direction.RIGHT and turn == Turn.LEFT):
+			return Direction.UP
+		else:
+			return Direction.caseOf(self.value + turn.value)
+			
 class StreetLight():
 	def __init__(self, horizontal_street, vertical_street, position, window):
 		self.state = StreetLightState.RED
@@ -367,19 +375,24 @@ class IntersectionManager():
 				intersection.lastUpdatedTime = datetime.datetime.now()
 
 class Route():
-	def __init__(self, manager, starting_intersection, turns):
+	def __init__(self, manager, initial_intersection, initial_direction, turns):
 		if (isisntance(manager, IntersectionManager)):
 			self.manager = manager
 		else:
 			raise TypeError(f"Route() was passed a {type(manager)} as its 'manager' argument. Expected an IntersectionManager.")
 
-		if (isinstance(starting_intersection, int)):
-			if (0 <= starting_intersection < len(self.manager.intersections)):
-				self.active_intersection = starting_intersection
+		if (isinstance(initial_intersection, int)):
+			if (0 <= initial_intersection < len(self.manager.intersections)):
+				self.active_intersection = initial_intersection
 			else:
-				raise ValueError(f"Route() was passed {starting_intersection} as its 'starting_intersection' argument. Please pass a valid index of self.manager.")
+				raise ValueError(f"Route() was passed {initial_intersection} as its 'initial_intersection' argument. Please pass a valid index of self.manager.")
 		else:
-			raise TypeError(f"Route() was passed a {type(starting_intersection)} as its 'starting_intersection' argument. Expected an int.")
+			raise TypeError(f"Route() was passed a {type(initial_intersection)} as its 'initial_intersection' argument. Expected an int.")
+
+		if (isinstance(initial_direction, Direction)):
+			self.active_direction = initial_direction
+		else:
+			raise TypeError(f"Route() was passed a {type(initial_direction)} as its 'initial_direction' argument. Expected a Direction.")
 
 		if (isinstance(turns, list)):
 			if (isinstance(turns[0], Turn)):
