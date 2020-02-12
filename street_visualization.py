@@ -84,6 +84,17 @@ class IntersectionState(RandableEnum):
 	VERTICAL_LEFT_TURN_YELLOW = 'VERTICAL_LEFT_TURN_YELLOW'
 	RED = 'RED'
 
+class Turn(RandableEnum):
+	LEFT = "LEFT"
+	RIGHT = "RIGHT"
+	STRAIGHT = "STRAIGHT"
+
+class Direction(RandableEnum):
+	UP = "UP"
+	DOWN = "DOWN"
+	LEFT = "LEFT"
+	RIGHT = "RIGHT"
+
 class StreetLight():
 	def __init__(self, horizontal_street, vertical_street, position, window):
 		self.state = StreetLightState.RED
@@ -354,6 +365,29 @@ class IntersectionManager():
 					intersection.popOperation()
 				intersection.intersection.updateState(newstate)
 				intersection.lastUpdatedTime = datetime.datetime.now()
+
+class Route():
+	def __init__(self, manager, starting_intersection, turns):
+		if (isisntance(manager, IntersectionManager)):
+			self.manager = manager
+		else:
+			raise TypeError(f"Route() was passed a {type(manager)} as its 'manager' argument. Expected an IntersectionManager.")
+
+		if (isinstance(starting_intersection, int)):
+			if (0 <= starting_intersection < len(self.manager.intersections)):
+				self.active_intersection = starting_intersection
+			else:
+				raise ValueError(f"Route() was passed {starting_intersection} as its 'starting_intersection' argument. Please pass a valid index of self.manager.")
+		else:
+			raise TypeError(f"Route() was passed a {type(starting_intersection)} as its 'starting_intersection' argument. Expected an int.")
+
+		if (isinstance(turns, list)):
+			if (isinstance(turns[0], Turn)):
+				self.turns = turns
+			else:
+				raise TypeError(f"Route() was passed a list of {type(turns[0])} as its 'turns' argument. Expected a list of Turns.")
+		else:
+			raise TypeError(f"Route() was passed a {type(turns)} as its 'turns' argument. Expected a list of Turns.")
 
 def getUpdates(intersection_count, queue):
 	while True:
