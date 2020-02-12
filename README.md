@@ -12,5 +12,5 @@ Our project uses many of python's builtin libraries. It specifically uses `time`
 
 ## This Version
 
-This is a __development__ version.
+This is a __development__ version.  
 Status: __Working.__ This version of the code will run. However, the Route feature which we are in the middle of implementing currently does nothing.
