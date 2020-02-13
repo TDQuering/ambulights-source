@@ -4,6 +4,7 @@ import datetime
 import threading
 import queue
 import random
+import math
 from enum import Enum
 
 class RandableEnum(Enum):
@@ -25,6 +26,19 @@ class RandableEnum(Enum):
 			return None
 		else:
 			return self(value)
+
+class list_2D(list):
+	def len_2D(self):
+		count = 0
+		for eachList in self:
+			count += len(eachList)
+		return count
+	
+	def index_2D(self, index):
+		index_1 = math.floor(index / len(self))
+		index_2 = index % len(self[0])
+		return self[index_1][index_2]
+
 
 class HorizontalStreet():
 	def __init__(self, y_value, window, thickness):
@@ -102,7 +116,7 @@ class Direction(RandableEnum):
 			return Direction.UP
 		else:
 			return Direction.caseOf(self.value + turn.value)
-			
+
 class StreetLight():
 	def __init__(self, horizontal_street, vertical_street, position, window):
 		self.state = StreetLightState.RED
@@ -314,24 +328,36 @@ class IntersectionManager():
 		if (isinstance(intersections, list)):
 			if(len(intersections) <= 0):
 				raise ValueError("IntersectionManager() was passed an empty list as its 'intersections' parameter. An empty list cannot be processed.")
-			elif(not isinstance(intersections[0], Intersection)):
-				raise TypeError(f"IntersectionManager() was passed a list of {type(intersections[0])} as its 'intersections' parameter. Expected a list of Intersections.")
+			elif(not isinstance(intersections[0], list)):
+				raise TypeError(f"IntersectionManager() was passed a list of {type(intersections[0])} as its 'intersections' parameter. Expected a 2D list (that is, a list of lists) of Intersections.")
+			elif(not isinstance(intersections[0][0], Intersection)):
+				raise TypeError(f"IntersectionManager() was passed a 2D list of {type(intersectoins[0][0])} as its 'intersections' parameter. Expected a 2D list of Intersections.")
 			else:
 				self.intersections = []
-				for item in intersections:
-					manageable = ManageableIntersection(intersection=item)
-					self.intersections.append(manageable)
+				for eachList in intersections:
+					active_list = []
+					for item in eachList:
+						manageable = ManageableIntersection(intersection=item)
+						active_list.append(manageable)
+					self.intersections.append(active_list)
 				try:
 					assert len(self.intersections) == len(intersections)
 				except AssertionError:
-					print("An internal error ocurred while initializing an IntersectionManager(). One or more intersections that were passed to the initializer were not able to be initialized into ManageableIntersections.")
+					print("An internal error ocurred while initializing an IntersectionManager. One or more intersections that were passed to the initializer were not able to be initialized into ManageableIntersections.")
 					raise
+				try:
+					for eachList in self.intersections:
+						assert len(eachList) == len(intersections[0])
+				except AssertionError:
+					print("An internal error ocurred while initializing an IntersectionManager. One or more intersections that were passed to the initializer were not able to be intialized into ManageableIntersections.")
+					raise
+				self.intersections = list_2D(self.intersections)
 		else:
-			raise TypeError(f"IntersectionManager() was passed a {type(intersections)} as its 'intersections' parameter. Expected a list of Intersections.")
+			raise TypeError(f"IntersectionManager() was passed a {type(intersections)} as its 'intersections' parameter. Expected a 2D list of Intersections.")
 
 	def pushOperation(self, index, nextchannel, delay):
 		if (isinstance(index, int)):
-			if (0 <= index < len(self.intersections)):
+			if (0 <= index < self.intersections.len_2D()):
 				pass
 			else: 
 				raise ValueError(f"IntersectionManager.pushOperation() was passed an out of range value as its 'index' parameter. Please pass a value between 0 and {len(self.intersections)} (inclusive).")
@@ -344,35 +370,36 @@ class IntersectionManager():
 		if (not isinstance(delay, int)):
 			raise TypeError(f"IntersectionManager.pushOperation() was passed a {type(delay)} as its 'delay' parameter. Expected an int.")
 
-		self.intersections[index].pushOperation(nextchannel, delay)	
+		self.intersections.index_2D(index).pushOperation(nextchannel, delay)	
 
 	def update(self):
-		for intersection in self.intersections:
-			if (intersection.stateMatchesNextChannel()):
-				intersection.popOperation()
-			if (intersection.readyToUpdate() and not intersection.stateMatchesNextChannel()):
-				if (intersection.currentstate == IntersectionState.HORIZONTAL_GREEN):
-					newstate = IntersectionState.HORIZONTAL_YELLOW
-				elif (intersection.currentstate == IntersectionState.HORIZONTAL_LEFT_TURN):
-					newstate = IntersectionState.HORIZONTAL_LEFT_TURN_YELLOW
-				elif (intersection.currentstate == IntersectionState.VERTICAL_GREEN):
-					newstate = IntersectionState.VERTICAL_YELLOW
-				elif (intersection.currentstate == IntersectionState.VERTICAL_LEFT_TURN):
-					newstate = IntersectionState.VERTICAL_LEFT_TURN_YELLOW
-				elif (intersection.currentstate == IntersectionState.HORIZONTAL_YELLOW or intersection.currentstate == IntersectionState.HORIZONTAL_LEFT_TURN_YELLOW or intersection.currentstate == IntersectionState.VERTICAL_YELLOW or intersection.currentstate == IntersectionState.VERTICAL_LEFT_TURN_YELLOW):
-					newstate = IntersectionState.RED
-				elif (intersection.currentstate == IntersectionState.RED):
-					if (intersection.nextchannel == IntersectionChannel.HORIZONTAL):
-						newstate = IntersectionState.HORIZONTAL_GREEN
-					elif (intersection.nextchannel == IntersectionChannel.VERTICAL):
-						newstate = IntersectionState.VERTICAL_GREEN
-					elif (intersection.nextchannel == IntersectionChannel.VERTICAL_LEFT_TURN):
-						newstate = IntersectionState.VERTICAL_LEFT_TURN
-					elif (intersection.nextchannel == IntersectionChannel.HORIZONTAL_LEFT_TURN): 
-						newstate = IntersectionState.HORIZONTAL_LEFT_TURN
+		for eachList in self.intersections:
+			for intersection in eachList:
+				if (intersection.stateMatchesNextChannel()):
 					intersection.popOperation()
-				intersection.intersection.updateState(newstate)
-				intersection.lastUpdatedTime = datetime.datetime.now()
+				if (intersection.readyToUpdate() and not intersection.stateMatchesNextChannel()):
+					if (intersection.currentstate == IntersectionState.HORIZONTAL_GREEN):
+						newstate = IntersectionState.HORIZONTAL_YELLOW
+					elif (intersection.currentstate == IntersectionState.HORIZONTAL_LEFT_TURN):
+						newstate = IntersectionState.HORIZONTAL_LEFT_TURN_YELLOW
+					elif (intersection.currentstate == IntersectionState.VERTICAL_GREEN):
+						newstate = IntersectionState.VERTICAL_YELLOW
+					elif (intersection.currentstate == IntersectionState.VERTICAL_LEFT_TURN):
+						newstate = IntersectionState.VERTICAL_LEFT_TURN_YELLOW
+					elif (intersection.currentstate == IntersectionState.HORIZONTAL_YELLOW or intersection.currentstate == IntersectionState.HORIZONTAL_LEFT_TURN_YELLOW or intersection.currentstate == IntersectionState.VERTICAL_YELLOW or intersection.currentstate == IntersectionState.VERTICAL_LEFT_TURN_YELLOW):
+						newstate = IntersectionState.RED
+					elif (intersection.currentstate == IntersectionState.RED):
+						if (intersection.nextchannel == IntersectionChannel.HORIZONTAL):
+							newstate = IntersectionState.HORIZONTAL_GREEN
+						elif (intersection.nextchannel == IntersectionChannel.VERTICAL):
+							newstate = IntersectionState.VERTICAL_GREEN
+						elif (intersection.nextchannel == IntersectionChannel.VERTICAL_LEFT_TURN):
+							newstate = IntersectionState.VERTICAL_LEFT_TURN
+						elif (intersection.nextchannel == IntersectionChannel.HORIZONTAL_LEFT_TURN): 
+							newstate = IntersectionState.HORIZONTAL_LEFT_TURN
+						intersection.popOperation()
+					intersection.intersection.updateState(newstate)
+					intersection.lastUpdatedTime = datetime.datetime.now()
 
 class Route():
 	def __init__(self, manager, initial_intersection, initial_direction, turns):
@@ -475,7 +502,7 @@ def main():
 	intersection_4_3 = Intersection(horizontal_street_4, vertical_street_3, win)
 	intersection_4_4 = Intersection(horizontal_street_4, vertical_street_4, win)
 
-	manager = IntersectionManager([intersection_1_1, intersection_1_2, intersection_1_3, intersection_1_4, intersection_2_1, intersection_2_2, intersection_2_3, intersection_2_4, intersection_3_1, intersection_3_2, intersection_3_3, intersection_3_4, intersection_4_1, intersection_4_2, intersection_4_3, intersection_4_4])
+	manager = IntersectionManager([[intersection_1_1, intersection_1_2, intersection_1_3, intersection_1_4], [intersection_2_1, intersection_2_2, intersection_2_3, intersection_2_4], [intersection_3_1, intersection_3_2, intersection_3_3, intersection_3_4], [intersection_4_1, intersection_4_2, intersection_4_3, intersection_4_4]])
 
 	operation_queue = queue.Queue()
 	operation_get_thread = threading.Thread(target=getUpdates, args=(16, operation_queue))

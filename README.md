@@ -14,18 +14,3 @@ Our project uses many of python's builtin libraries. It specifically uses `time`
 
 This is a __development__ version.  
 Status: __Working.__ This version of the code will run. However, the `Route` feature which we are in the middle of implementing currently does nothing.
-
-## Notes & Next Steps
-
-The next step should be to refactor `IntersectionManager` to use a 2D array to store intersections. Here's some example code that I was messing around with in IDLE as a reference: 
-
-```python
-twoDim = [[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11], [12, 13, 14, 15]]
-
-def index_2D(array, index):
-	index_1 = math.floor(index / len(array))
-	index_2 = index % len(array[0])
-	return array[index_1][index_2]
-```
-
-After this, it will be much easier to work with turns from a `Route` object. 
