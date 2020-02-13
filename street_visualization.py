@@ -401,9 +401,21 @@ class IntersectionManager():
 					intersection.intersection.updateState(newstate)
 					intersection.lastUpdatedTime = datetime.datetime.now()
 
+	def nextIntersection(self, intersection_index, turn):
+		if (not isinstance(intersection, int)):
+			raise TypeError(f"IntersectionManager.nextIntersection() was passed a {type(intersection_index)} as its 'intersection_index' argument. Expected an int.")
+		else:
+			if (0 <= intersection_index < self.intersections.len_2D()):
+				pass
+			else:
+				raise ValueError(f"IntersectionManager.nextIntersection() was passed {intersection_index} as its 'intersection_index' argument. Expected a valid index, between 0 and {self.intersections.len_2D() - 1}.")
+
+		if (not isinstance(turn, Turn)):
+			raise TypeError(f"IntersectionManager.nextIntersection() was passed a {type(turn)} as its 'turn' argument. Expected a turn.")
+
 class Route():
 	def __init__(self, manager, initial_intersection, initial_direction, turns):
-		if (isisntance(manager, IntersectionManager)):
+		if (isinstance(manager, IntersectionManager)):
 			self.manager = manager
 		else:
 			raise TypeError(f"Route() was passed a {type(manager)} as its 'manager' argument. Expected an IntersectionManager.")
