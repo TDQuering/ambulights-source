@@ -7,6 +7,8 @@ import random
 import math
 from enum import Enum
 
+# TODO: Scale everything up for presentation
+
 class RandableEnum(Enum):
 	@classmethod
 	def rand(self):
@@ -38,7 +40,6 @@ class list_2D(list):
 		index_1 = math.floor(index / len(self))
 		index_2 = index % len(self[0])
 		return self[index_1][index_2]
-
 
 class HorizontalStreet():
 	def __init__(self, y_value, window, thickness):
@@ -116,6 +117,28 @@ class Direction(RandableEnum):
 			return Direction.UP
 		else:
 			return Direction.caseOf(self.value + turn.value)
+
+	def getIntersectionChannel(self, new_direction):
+		if (self == Direction.UP):
+			if (new_direction == Direction.UP or new_direction == Direction.RIGHT):
+				return IntersectionChannel.VERTICAL
+			elif (new_direction == Direction.LEFT):
+				return IntersectionChannel.VERTICAL_LEFT_TURN
+		elif (self == Direction.DOWN):
+			if(new_direction == Direction.DOWN or new_direction == Direction.LEFT):
+				return IntersectionChannel.VERTICAL
+			elif (new_direction == Direction.RIGHT):
+				return IntersectionChannel.VERTICAL_LEFT_TURN
+		elif (self == Direction.LEFT):
+			if (new_direction == Direction.LEFT or new_direction == Direction.UP):
+				return IntersectionChannel.HORIZONTAL
+			elif (new_direction == Direction.DOWN):
+				return IntersectionChannel.HORIZONTAL_LEFT_TURN
+		elif (self == Direction.RIGHT):
+			if (new_direction == Direction.RIGHT == new_direction == Direction.DOWN):
+				return IntersectionChannel.HORIZONTAL
+			elif (new_direction == Direction.UP):
+				return IntersectionChannel.HORIZONTAL_LEFT_TURN
 
 class StreetLight():
 	def __init__(self, horizontal_street, vertical_street, position, window):
@@ -441,6 +464,16 @@ class Route():
 		else:
 			raise TypeError(f"Route() was passed a {type(turns)} as its 'turns' argument. Expected a list of Turns.")
 
+	def pop(self):
+		active_turn = self.turns.pop(0)
+		new_direction = self.active_direction.turn(active_turn)
+		next_channel = self.active_direction.getIntersectionChannel(new_direction)
+		self.manager.pushOperation(self.active_intersection, next_channel, 2)
+		#TODOS: See below
+		#	1. 	Update self.active_intersection. Will need to write an IntersectionManager.nextIntersection() function to handle this.
+		#	2.	Update self.active_direction to equal new_direction
+		# 	3. 	After this, update the main functions to use this new functionality rather than manually getting operations from the command line.
+
 def getUpdates(intersection_count, queue):
 	while True:
 		correct_input = False
@@ -523,7 +556,7 @@ def main():
 	while True:
 		if not operation_queue.empty():
 			operation = operation_queue.get()
-			manager.pushOperation(operation[0], operation[1], 5)
+			manager.pushOperation(operation[0], operation[1], 2)
 		manager.update()
 
 main()
