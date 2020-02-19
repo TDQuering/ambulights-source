@@ -119,6 +119,7 @@ class Direction(RandableEnum):
 			return Direction.caseOf(self.value + turn.value)
 
 	def getIntersectionChannel(self, new_direction):
+		print(f"Called {self}.getIntersectionChannel({new_direction})")
 		if (self == Direction.UP):
 			if (new_direction == Direction.UP or new_direction == Direction.RIGHT):
 				return IntersectionChannel.VERTICAL
@@ -135,7 +136,7 @@ class Direction(RandableEnum):
 			elif (new_direction == Direction.DOWN):
 				return IntersectionChannel.HORIZONTAL_LEFT_TURN
 		elif (self == Direction.RIGHT):
-			if (new_direction == Direction.RIGHT == new_direction == Direction.DOWN):
+			if (new_direction == Direction.RIGHT or new_direction == Direction.DOWN):
 				return IntersectionChannel.HORIZONTAL
 			elif (new_direction == Direction.UP):
 				return IntersectionChannel.HORIZONTAL_LEFT_TURN
@@ -383,7 +384,7 @@ class IntersectionManager():
 			if (0 <= index < self.intersections.len_2D()):
 				pass
 			else: 
-				raise ValueError(f"IntersectionManager.pushOperation() was passed an out of range value as its 'index' parameter. Please pass a value between 0 and {len(self.intersections)} (inclusive).")
+				raise ValueError(f"IntersectionManager.pushOperation() was passed an out of range value ({index}) as its 'index' parameter. Please pass a value between 0 and {self.intersections.len_2D() - 1} (inclusive).")
 		else:
 			raise TypeError(f"IntersectionManager.pushOperation() was passed a {type(index)} as its 'index' parameter. Expected an int.")
 
@@ -424,8 +425,8 @@ class IntersectionManager():
 					intersection.intersection.updateState(newstate)
 					intersection.lastUpdatedTime = datetime.datetime.now()
 
-	def nextIntersection(self, intersection_index, turn):
-		if (not isinstance(intersection, int)):
+	def nextIntersection(self, intersection_index, direction):
+		if (not isinstance(intersection_index, int)):
 			raise TypeError(f"IntersectionManager.nextIntersection() was passed a {type(intersection_index)} as its 'intersection_index' argument. Expected an int.")
 		else:
 			if (0 <= intersection_index < self.intersections.len_2D()):
@@ -433,8 +434,17 @@ class IntersectionManager():
 			else:
 				raise ValueError(f"IntersectionManager.nextIntersection() was passed {intersection_index} as its 'intersection_index' argument. Expected a valid index, between 0 and {self.intersections.len_2D() - 1}.")
 
-		if (not isinstance(turn, Turn)):
-			raise TypeError(f"IntersectionManager.nextIntersection() was passed a {type(turn)} as its 'turn' argument. Expected a turn.")
+		if (not isinstance(direction, Direction)):
+			raise TypeError(f"IntersectionManager.nextIntersection() was passed a {type(direction)} as its 'direction' argument. Expected a Direction.")
+
+		if (direction == Direction.LEFT):
+			return intersection_index - 1
+		if (direction == Direction.RIGHT):
+			return intersection_index + 1
+		if (direction == Direction.UP):
+			return intersection_index - 4
+		if (direction == Direction.DOWN):
+			return intersection_index + 4
 
 class Route():
 	def __init__(self, manager, initial_intersection, initial_direction, turns):
@@ -465,15 +475,20 @@ class Route():
 			raise TypeError(f"Route() was passed a {type(turns)} as its 'turns' argument. Expected a list of Turns.")
 
 	def pop(self):
-		active_turn = self.turns.pop(0)
-		new_direction = self.active_direction.turn(active_turn)
-		next_channel = self.active_direction.getIntersectionChannel(new_direction)
-		self.manager.pushOperation(self.active_intersection, next_channel, 2)
-		#TODOS: See below
-		#	1. 	Update self.active_intersection. Will need to write an IntersectionManager.nextIntersection() function to handle this.
-		#	2.	Update self.active_direction to equal new_direction
-		# 	3. 	After this, update the main functions to use this new functionality rather than manually getting operations from the command line.
-
+		if (len(self.turns) > 0):
+			active_turn = self.turns.pop(0)
+			print(active_turn)
+			new_direction = self.active_direction.turn(active_turn)
+			next_channel = self.active_direction.getIntersectionChannel(new_direction)
+			self.manager.pushOperation(self.active_intersection, next_channel, 2)
+			self.active_intersection = self.manager.nextIntersection(self.active_intersection, new_direction)
+			self.active_direction = new_direction
+			#TODOS: See below
+			#	1. 	Update self.active_intersection. Will need to write an IntersectionManager.nextIntersection() function to handle this.
+			#	2.	Update self.active_direction to equal new_direction
+			# 	3. 	After this, update the main functions to use this new functionality rather than manually getting operations from the command line.
+#yoged this function out of the way for now, will probably delete
+"""
 def getUpdates(intersection_count, queue):
 	while True:
 		correct_input = False
@@ -498,6 +513,14 @@ def getUpdates(intersection_count, queue):
 			else: 
 				print("Please type a valid IntersectionChannel.")
 		queue.put((intersection, channel))
+"""
+
+def updateFromRoutes(manager):
+	routes = [Route(manager, 0, Direction.RIGHT, [Turn.STRAIGHT, Turn.STRAIGHT, Turn.RIGHT, Turn.STRAIGHT, Turn.LEFT])]
+	while True:
+		for route in routes:
+			route.pop()
+		time.sleep(10)
 
 def main(): 
 	win = GraphWin("Street Visualization", 500, 500)
@@ -549,14 +572,17 @@ def main():
 
 	manager = IntersectionManager([[intersection_1_1, intersection_1_2, intersection_1_3, intersection_1_4], [intersection_2_1, intersection_2_2, intersection_2_3, intersection_2_4], [intersection_3_1, intersection_3_2, intersection_3_3, intersection_3_4], [intersection_4_1, intersection_4_2, intersection_4_3, intersection_4_4]])
 
-	operation_queue = queue.Queue()
-	operation_get_thread = threading.Thread(target=getUpdates, args=(16, operation_queue))
-	operation_get_thread.start()
+	#operation_queue = queue.Queue()
+	#operation_get_thread = threading.Thread(target=getUpdates, args=(16, operation_queue))
+	#operation_get_thread.start()
+
+	route_manager_thread = threading.Thread(target=updateFromRoutes, args=(manager,))
+	route_manager_thread.start()
 
 	while True:
-		if not operation_queue.empty():
-			operation = operation_queue.get()
-			manager.pushOperation(operation[0], operation[1], 2)
+		#if not operation_queue.empty():
+			#operation = operation_queue.get()
+			#manager.pushOperation(operation[0], operation[1], 2)
 		manager.update()
 
 main()
