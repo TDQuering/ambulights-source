@@ -470,11 +470,19 @@ class Vehicle():
 		self.triangle.setFill("yellow")
 
 	def draw(self):
+		print(self.triangle)
 		self.triangle.undraw()
+		self.triangle.setFill("yellow")
 		self.triangle.draw(self.window)
 
+	def updateTriangle(self):
+		if (self.direction == Direction.RIGHT):
+			self.triangle = Polygon([Point(self.vertical_street.x_pos - 6, self.horizontal_street.y_pos - 6), Point(self.vertical_street.x_pos - 6, self.horizontal_street.y_pos + 12), Point(self.vertical_street.x_pos + 12, self.horizontal_street.y_pos + 3)])
+		elif (self.direction == Direction.LEFT):
+			self.triangle = Polygon([Point(self.vertical_street.x_pos + 12, self.horizontal_street.y_pos - 6), Point(self.vertical_street.x_pos + 12, self.horizontal_street.y_pos + 12), Point(self.vertical_street.x_pos - 6, self.horizontal_street.y_value + 3)])	
+
 class Route():
-	def __init__(self, manager, initial_intersection, initial_direction, turns, queue):
+	def __init__(self, manager, initial_intersection, initial_direction, turns, update_queue, undraw_queue):
 		if (isinstance(manager, IntersectionManager)):
 			self.manager = manager
 		else:
@@ -502,10 +510,11 @@ class Route():
 			raise TypeError(f"Route() was passed a {type(turns)} as its 'turns' argument. Expected a list of Turns.")
 
 
-		self.queue = queue
+		self.update_queue = update_queue
+		self.undraw_queue = undraw_queue
 
 		self.vehicle = Vehicle(self.manager.intersections.index_2D(self.active_intersection).intersection.window, self.manager.intersections.index_2D(self.active_intersection).intersection.horizontal_street, self.manager.intersections.index_2D(self.active_intersection).intersection.vertical_street, self.active_direction)
-		self.queue.put(self)
+		self.update_queue.put(self)
 
 	def pop(self):
 		if (len(self.turns) > 0):
@@ -516,6 +525,12 @@ class Route():
 			self.manager.pushOperation(self.active_intersection, next_channel, 2)
 			self.active_intersection = self.manager.nextIntersection(self.active_intersection, new_direction)
 			self.active_direction = new_direction
+			self.undraw_queue.put(self)
+			self.vehicle.horizontal_street = self.manager.intersections.index_2D(self.active_intersection).intersection.horizontal_street
+			self.vehicle.vertical_street = self.manager.intersections.index_2D(self.active_intersection).intersection.vertical_street
+			self.vehicle.direction = self.active_direction
+			self.vehicle.updateTriangle()
+			self.update_queue.put(self)
 			#TODOS: See below
 			#	1. 	Update self.active_intersection. Will need to write an IntersectionManager.nextIntersection() function to handle this.
 			#	2.	Update self.active_direction to equal new_direction
@@ -548,8 +563,8 @@ def getUpdates(intersection_count, queue):
 		queue.put((intersection, channel))
 """
 
-def updateFromRoutes(manager, queue):
-	routes = [Route(manager, 0, Direction.RIGHT, [Turn.STRAIGHT, Turn.RIGHT, Turn.LEFT, Turn.LEFT, Turn.LEFT, Turn.LEFT], queue)]
+def updateFromRoutes(manager, update_queue, undraw_queue):
+	routes = [Route(manager, 0, Direction.RIGHT, [Turn.STRAIGHT, Turn.STRAIGHT], update_queue, undraw_queue)]
 	while True:
 		for route in routes:
 			route.pop()
@@ -610,10 +625,14 @@ def main():
 	#operation_get_thread.start()
 
 	triangle_update_queue = queue.Queue()
-	route_manager_thread = threading.Thread(target=updateFromRoutes, args=(manager, triangle_update_queue))
+	triangle_undraw_queue = queue.Queue()
+	route_manager_thread = threading.Thread(target=updateFromRoutes, args=(manager, triangle_update_queue, triangle_undraw_queue))
 	route_manager_thread.start()
 
 	while True:
+		if not triangle_undraw_queue.empty():
+			route = triangle_undraw_queue.get()
+			route.vehicle.triangle.undraw()
 		if not triangle_update_queue.empty():
 			route = triangle_update_queue.get()
 			route.vehicle.draw()
