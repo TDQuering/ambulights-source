@@ -470,7 +470,6 @@ class Vehicle():
 		self.triangle.setFill("yellow")
 
 	def draw(self):
-		print(self.triangle)
 		self.triangle.undraw()
 		self.triangle.setFill("yellow")
 		self.triangle.draw(self.window)
@@ -523,7 +522,6 @@ class Route():
 	def pop(self):
 		if (len(self.turns) > 0):
 			active_turn = self.turns.pop(0)
-			print(f"Active Intersection: {self.active_intersection:20}\nActive Direction: {self.active_direction:20}\nNext Turn: {active_turn:20}")
 			new_direction = self.active_direction.turn(active_turn)
 			next_channel = self.active_direction.getIntersectionChannel(new_direction)
 			self.manager.pushOperation(self.active_intersection, next_channel, 2)
@@ -541,7 +539,7 @@ class Route():
 			# 	3. 	After this, update the main functions to use this new functionality rather than manually getting operations from the command line.
 
 def updateFromRoutes(manager, update_queue, undraw_queue):
-	routes = [Route(manager, 0, Direction.RIGHT, [Turn.STRAIGHT, Turn.RIGHT, Turn.STRAIGHT, Turn.LEFT, Turn.STRAIGHT], update_queue, undraw_queue)]
+	routes = [Route(manager, 0, Direction.RIGHT, [Turn.STRAIGHT, Turn.RIGHT, Turn.STRAIGHT, Turn.LEFT, Turn.STRAIGHT], update_queue, undraw_queue), Route(manager, 15, Direction.UP, [Turn.STRAIGHT, Turn.STRAIGHT], update_queue, undraw_queue)]
 	while True:
 		time.sleep(7)
 		for route in routes:
