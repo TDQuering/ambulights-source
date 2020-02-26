@@ -466,7 +466,7 @@ class Vehicle():
 		else:
 			self.direction = direction
 
-		self.triangle = Polygon([Point(self.vertical_street.x_pos - 6, self.horizontal_street.y_pos - 6), Point(self.vertical_street.x_pos - 6, self.horizontal_street.y_pos + 12), Point(self.vertical_street.x_pos + 12, self.horizontal_street.y_pos + 3)])
+		self.updateTriangle()
 		self.triangle.setFill("yellow")
 
 	def draw(self):
@@ -479,7 +479,11 @@ class Vehicle():
 		if (self.direction == Direction.RIGHT):
 			self.triangle = Polygon([Point(self.vertical_street.x_pos - 6, self.horizontal_street.y_pos - 6), Point(self.vertical_street.x_pos - 6, self.horizontal_street.y_pos + 12), Point(self.vertical_street.x_pos + 12, self.horizontal_street.y_pos + 3)])
 		elif (self.direction == Direction.LEFT):
-			self.triangle = Polygon([Point(self.vertical_street.x_pos + 12, self.horizontal_street.y_pos - 6), Point(self.vertical_street.x_pos + 12, self.horizontal_street.y_pos + 12), Point(self.vertical_street.x_pos - 6, self.horizontal_street.y_value + 3)])	
+			self.triangle = Polygon([Point(self.vertical_street.x_pos + 12, self.horizontal_street.y_pos - 6), Point(self.vertical_street.x_pos + 12, self.horizontal_street.y_pos + 12), Point(self.vertical_street.x_pos - 6, self.horizontal_street.y_pos + 3)])	
+		elif (self.direction == Direction.DOWN):
+			self.triangle = Polygon([Point(self.vertical_street.x_pos - 6, self.horizontal_street.y_pos - 6), Point(self.vertical_street.x_pos + 12, self.horizontal_street.y_pos - 6), Point(self.vertical_street.x_pos + 3, self.horizontal_street.y_pos + 12)])
+		elif (self.direction == Direction.UP):
+			self.triangle = Polygon([Point(self.vertical_street.x_pos - 6, self.horizontal_street.y_pos + 12), Point(self.vertical_street.x_pos + 12, self.horizontal_street.y_pos + 12), Point(self.vertical_street.x_pos + 3, self.horizontal_street.y_pos - 6)])
 
 class Route():
 	def __init__(self, manager, initial_intersection, initial_direction, turns, update_queue, undraw_queue):
@@ -489,7 +493,7 @@ class Route():
 			raise TypeError(f"Route() was passed a {type(manager)} as its 'manager' argument. Expected an IntersectionManager.")
 
 		if (isinstance(initial_intersection, int)):
-			if (0 <= initial_intersection < len(self.manager.intersections)):
+			if (0 <= initial_intersection < self.manager.intersections.len_2D()):
 				self.active_intersection = initial_intersection
 			else:
 				raise ValueError(f"Route() was passed {initial_intersection} as its 'initial_intersection' argument. Please pass a valid index of self.manager.")
@@ -525,7 +529,7 @@ class Route():
 			self.manager.pushOperation(self.active_intersection, next_channel, 2)
 			self.active_intersection = self.manager.nextIntersection(self.active_intersection, new_direction)
 			self.active_direction = new_direction
-			self.undraw_queue.put(self)
+			self.undraw_queue.put(self.vehicle.triangle)
 			self.vehicle.horizontal_street = self.manager.intersections.index_2D(self.active_intersection).intersection.horizontal_street
 			self.vehicle.vertical_street = self.manager.intersections.index_2D(self.active_intersection).intersection.vertical_street
 			self.vehicle.direction = self.active_direction
@@ -535,40 +539,13 @@ class Route():
 			#	1. 	Update self.active_intersection. Will need to write an IntersectionManager.nextIntersection() function to handle this.
 			#	2.	Update self.active_direction to equal new_direction
 			# 	3. 	After this, update the main functions to use this new functionality rather than manually getting operations from the command line.
-#yoged this function out of the way for now, will probably delete
-"""
-def getUpdates(intersection_count, queue):
-	while True:
-		correct_input = False
-		while (not correct_input):
-			intersection = input("Which intersection would you like to change? Input 0-15: ")
-			try:
-				intersection = int(intersection)
-				if intersection in range(0, 16):
-					correct_input = True
-				else:
-					print("Please type an integer from 0 to 15.")
-			except ValueError: 
-				print("Please type an integer")
-
-		correct_input = False
-		while (not correct_input):
-			channel = input("What should be the new IntersectionChannel? Input an IntersectionChannel: ")
-			channel = channel.upper()
-			if (IntersectionChannel.caseOf(channel) != None):
-				channel = IntersectionChannel.caseOf(channel)
-				correct_input = True
-			else: 
-				print("Please type a valid IntersectionChannel.")
-		queue.put((intersection, channel))
-"""
 
 def updateFromRoutes(manager, update_queue, undraw_queue):
-	routes = [Route(manager, 0, Direction.RIGHT, [Turn.STRAIGHT, Turn.STRAIGHT], update_queue, undraw_queue)]
+	routes = [Route(manager, 0, Direction.RIGHT, [Turn.STRAIGHT, Turn.RIGHT, Turn.STRAIGHT, Turn.LEFT, Turn.STRAIGHT], update_queue, undraw_queue)]
 	while True:
+		time.sleep(7)
 		for route in routes:
 			route.pop()
-		time.sleep(10)
 
 def main(): 
 	win = GraphWin("Street Visualization", 600, 600)
@@ -620,10 +597,6 @@ def main():
 
 	manager = IntersectionManager([[intersection_1_1, intersection_1_2, intersection_1_3, intersection_1_4], [intersection_2_1, intersection_2_2, intersection_2_3, intersection_2_4], [intersection_3_1, intersection_3_2, intersection_3_3, intersection_3_4], [intersection_4_1, intersection_4_2, intersection_4_3, intersection_4_4]])
 
-	#operation_queue = queue.Queue()
-	#operation_get_thread = threading.Thread(target=getUpdates, args=(16, operation_queue))
-	#operation_get_thread.start()
-
 	triangle_update_queue = queue.Queue()
 	triangle_undraw_queue = queue.Queue()
 	route_manager_thread = threading.Thread(target=updateFromRoutes, args=(manager, triangle_update_queue, triangle_undraw_queue))
@@ -631,14 +604,11 @@ def main():
 
 	while True:
 		if not triangle_undraw_queue.empty():
-			route = triangle_undraw_queue.get()
-			route.vehicle.triangle.undraw()
+			triangle = triangle_undraw_queue.get()
+			triangle.undraw()
 		if not triangle_update_queue.empty():
 			route = triangle_update_queue.get()
 			route.vehicle.draw()
-		#if not operation_queue.empty():
-			#operation = operation_queue.get()
-			#manager.pushOperation(operation[0], operation[1], 2)
 		manager.update()
 
 main()

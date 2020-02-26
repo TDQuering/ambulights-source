@@ -8,9 +8,12 @@ There are two main branches in this repository, the master branch and the develo
 
 ## Dependencies
 
-Our project uses many of python's builtin libraries. It specifically uses `time`, `datetime`, `threading`, `queue`, `random`, and `enum`. It also uses `graphics.py`, an open-source graphics library created by John Zelle, so special thanks to him for providing such a useful piece of software for free. You can find it [here](https://mcsp.wartburg.edu/zelle/python/graphics.py) if you're interested. The version that we use is also stored in this repository.
+Our project uses many of python's builtin libraries. It specifically uses `time`, `datetime`, `threading`, `queue`, `random`, `math` and `enum`. It also uses `graphics.py`, an open-source graphics library created by John Zelle, so special thanks to him for providing such a useful piece of software for free. You can find it [here](https://mcsp.wartburg.edu/zelle/python/graphics.py) if you're interested. The version that we use is also stored in this repository.
 
 ## This Version
 
-This is a __development__ version.  
-Status: __Working.__ This version of the code will run. However, the `Route` feature which we are in the middle of implementing currently does nothing.
+This is a __stable__ version.  
+Status: __Working.__
+
+## Future Development
+There are still some minor improvements that could be made. For example, it would be better if the triangle waited for the intersection to change before moving. However, that has not yet been implemented as it would probably take a good amount of time to get working properly.
