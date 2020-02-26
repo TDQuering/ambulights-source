@@ -4,7 +4,10 @@ import datetime
 import threading
 import queue
 import random
+import math
 from enum import Enum
+
+# TODO: Scale everything up for presentation
 
 class RandableEnum(Enum):
 	@classmethod
@@ -25,6 +28,18 @@ class RandableEnum(Enum):
 			return None
 		else:
 			return self(value)
+
+class list_2D(list):
+	def len_2D(self):
+		count = 0
+		for eachList in self:
+			count += len(eachList)
+		return count
+	
+	def index_2D(self, index):
+		index_1 = math.floor(index / len(self))
+		index_2 = index % len(self[0])
+		return self[index_1][index_2]
 
 class HorizontalStreet():
 	def __init__(self, y_value, window, thickness):
@@ -84,6 +99,47 @@ class IntersectionState(RandableEnum):
 	VERTICAL_LEFT_TURN_YELLOW = 'VERTICAL_LEFT_TURN_YELLOW'
 	RED = 'RED'
 
+class Turn(RandableEnum):
+	RIGHT = -1
+	STRAIGHT = 0
+	LEFT = 1
+
+class Direction(RandableEnum):
+	UP = 1
+	LEFT = 2
+	DOWN = 3
+	RIGHT = 4
+	
+	def turn(self, turn):
+		if (self == Direction.UP and turn == Turn.RIGHT):
+			return Direction.RIGHT
+		elif (self == Direction.RIGHT and turn == Turn.LEFT):
+			return Direction.UP
+		else:
+			return Direction.caseOf(self.value + turn.value)
+
+	def getIntersectionChannel(self, new_direction):
+		if (self == Direction.UP):
+			if (new_direction == Direction.UP or new_direction == Direction.RIGHT):
+				return IntersectionChannel.VERTICAL
+			elif (new_direction == Direction.LEFT):
+				return IntersectionChannel.VERTICAL_LEFT_TURN
+		elif (self == Direction.DOWN):
+			if(new_direction == Direction.DOWN or new_direction == Direction.LEFT):
+				return IntersectionChannel.VERTICAL
+			elif (new_direction == Direction.RIGHT):
+				return IntersectionChannel.VERTICAL_LEFT_TURN
+		elif (self == Direction.LEFT):
+			if (new_direction == Direction.LEFT or new_direction == Direction.UP):
+				return IntersectionChannel.HORIZONTAL
+			elif (new_direction == Direction.DOWN):
+				return IntersectionChannel.HORIZONTAL_LEFT_TURN
+		elif (self == Direction.RIGHT):
+			if (new_direction == Direction.RIGHT or new_direction == Direction.DOWN):
+				return IntersectionChannel.HORIZONTAL
+			elif (new_direction == Direction.UP):
+				return IntersectionChannel.HORIZONTAL_LEFT_TURN
+
 class StreetLight():
 	def __init__(self, horizontal_street, vertical_street, position, window):
 		self.state = StreetLightState.RED
@@ -95,17 +151,17 @@ class StreetLight():
 		self.vertical_street = vertical_street
 		self.horizontal_street = horizontal_street
 		if position == StreetLightPosition.RIGHT:
-			self.main_rect = Rectangle(Point(vertical_street.getPos() + 10, horizontal_street.getPos() - 5), Point(vertical_street.getPos() + 15, horizontal_street.getPos() + 5))
-			self.left_rect = Rectangle(Point(vertical_street.getPos() + 10, horizontal_street.getPos() + 5), Point(vertical_street.getPos() + 15, horizontal_street.getPos() + 10))
+			self.main_rect = Rectangle(Point(vertical_street.getPos() + 12, horizontal_street.getPos() - 6), Point(vertical_street.getPos() + 18, horizontal_street.getPos() + 6))
+			self.left_rect = Rectangle(Point(vertical_street.getPos() + 12, horizontal_street.getPos() + 6), Point(vertical_street.getPos() + 18, horizontal_street.getPos() + 12))
 		elif position == StreetLightPosition.LEFT:
-			self.main_rect = Rectangle(Point(vertical_street.getPos() - 5, horizontal_street.getPos()), Point(vertical_street.getPos() - 10, horizontal_street.getPos() + 10))
-			self.left_rect = Rectangle(Point(vertical_street.getPos() - 5, horizontal_street.getPos() - 5), Point(vertical_street.getPos() - 10, horizontal_street.getPos()))
+			self.main_rect = Rectangle(Point(vertical_street.getPos() - 6, horizontal_street.getPos()), Point(vertical_street.getPos() - 12, horizontal_street.getPos() + 12))
+			self.left_rect = Rectangle(Point(vertical_street.getPos() - 6, horizontal_street.getPos() - 6), Point(vertical_street.getPos() - 12, horizontal_street.getPos()))
 		elif position == StreetLightPosition.TOP:
-			self.main_rect = Rectangle(Point(vertical_street.getPos() - 5, horizontal_street.getPos() - 10), Point(vertical_street.getPos() + 5, horizontal_street.getPos() - 5))
-			self.left_rect = Rectangle(Point(vertical_street.getPos() + 5, horizontal_street.getPos() - 10), Point(vertical_street.getPos() + 10, horizontal_street.getPos() - 5))
+			self.main_rect = Rectangle(Point(vertical_street.getPos() - 6, horizontal_street.getPos() - 12), Point(vertical_street.getPos() + 6, horizontal_street.getPos() - 6))
+			self.left_rect = Rectangle(Point(vertical_street.getPos() + 6, horizontal_street.getPos() - 12), Point(vertical_street.getPos() + 12, horizontal_street.getPos() - 6))
 		elif position == StreetLightPosition.BOTTOM:
-			self.main_rect = Rectangle(Point(vertical_street.getPos(), horizontal_street.getPos() + 10), Point(vertical_street.getPos() + 10, horizontal_street.getPos() + 15))
-			self.left_rect = Rectangle(Point(vertical_street.getPos() - 5, horizontal_street.getPos() + 10), Point(vertical_street.getPos(), horizontal_street.getPos() + 15))
+			self.main_rect = Rectangle(Point(vertical_street.getPos(), horizontal_street.getPos() + 12), Point(vertical_street.getPos() + 12, horizontal_street.getPos() + 18))
+			self.left_rect = Rectangle(Point(vertical_street.getPos() - 6, horizontal_street.getPos() + 12), Point(vertical_street.getPos(), horizontal_street.getPos() + 18))
 		self.main_rect.setFill("red")
 		self.left_rect.setFill("red")
 
@@ -239,7 +295,6 @@ class ManageableIntersection():
 	def currentstate(self):
 		return self.intersection.state
 	
-
 	def pushOperation(self, nextchannel, delay):
 		if(not isinstance(nextchannel, IntersectionChannel)):
 			raise TypeError(f"ManageableIntersection.pushOperation was passed a {type(nextchannel)} as its 'nextchannel' argument. Expected an IntersectionChannel.")
@@ -295,27 +350,39 @@ class IntersectionManager():
 		if (isinstance(intersections, list)):
 			if(len(intersections) <= 0):
 				raise ValueError("IntersectionManager() was passed an empty list as its 'intersections' parameter. An empty list cannot be processed.")
-			elif(not isinstance(intersections[0], Intersection)):
-				raise TypeError(f"IntersectionManager() was passed a list of {type(intersections[0])} as its 'intersections' parameter. Expected a list of Intersections.")
+			elif(not isinstance(intersections[0], list)):
+				raise TypeError(f"IntersectionManager() was passed a list of {type(intersections[0])} as its 'intersections' parameter. Expected a 2D list (that is, a list of lists) of Intersections.")
+			elif(not isinstance(intersections[0][0], Intersection)):
+				raise TypeError(f"IntersectionManager() was passed a 2D list of {type(intersectoins[0][0])} as its 'intersections' parameter. Expected a 2D list of Intersections.")
 			else:
 				self.intersections = []
-				for item in intersections:
-					manageable = ManageableIntersection(intersection=item)
-					self.intersections.append(manageable)
+				for eachList in intersections:
+					active_list = []
+					for item in eachList:
+						manageable = ManageableIntersection(intersection=item)
+						active_list.append(manageable)
+					self.intersections.append(active_list)
 				try:
 					assert len(self.intersections) == len(intersections)
 				except AssertionError:
-					print("An internal error ocurred while initializing an IntersectionManager(). One or more intersections that were passed to the initializer were not able to be initialized into ManageableIntersections.")
+					print("An internal error ocurred while initializing an IntersectionManager. One or more intersections that were passed to the initializer were not able to be initialized into ManageableIntersections.")
 					raise
+				try:
+					for eachList in self.intersections:
+						assert len(eachList) == len(intersections[0])
+				except AssertionError:
+					print("An internal error ocurred while initializing an IntersectionManager. One or more intersections that were passed to the initializer were not able to be intialized into ManageableIntersections.")
+					raise
+				self.intersections = list_2D(self.intersections)
 		else:
-			raise TypeError(f"IntersectionManager() was passed a {type(intersections)} as its 'intersections' parameter. Expected a list of Intersections.")
+			raise TypeError(f"IntersectionManager() was passed a {type(intersections)} as its 'intersections' parameter. Expected a 2D list of Intersections.")
 
 	def pushOperation(self, index, nextchannel, delay):
 		if (isinstance(index, int)):
-			if (0 <= index < len(self.intersections)):
+			if (0 <= index < self.intersections.len_2D()):
 				pass
 			else: 
-				raise ValueError(f"IntersectionManager.pushOperation() was passed an out of range value as its 'index' parameter. Please pass a value between 0 and {len(self.intersections)} (inclusive).")
+				raise ValueError(f"IntersectionManager.pushOperation() was passed an out of range value ({index}) as its 'index' parameter. Please pass a value between 0 and {self.intersections.len_2D() - 1} (inclusive).")
 		else:
 			raise TypeError(f"IntersectionManager.pushOperation() was passed a {type(index)} as its 'index' parameter. Expected an int.")
 
@@ -325,87 +392,185 @@ class IntersectionManager():
 		if (not isinstance(delay, int)):
 			raise TypeError(f"IntersectionManager.pushOperation() was passed a {type(delay)} as its 'delay' parameter. Expected an int.")
 
-		self.intersections[index].pushOperation(nextchannel, delay)	
+		self.intersections.index_2D(index).pushOperation(nextchannel, delay)	
 
 	def update(self):
-		for intersection in self.intersections:
-			if (intersection.stateMatchesNextChannel()):
-				intersection.popOperation()
-			if (intersection.readyToUpdate() and not intersection.stateMatchesNextChannel()):
-				if (intersection.currentstate == IntersectionState.HORIZONTAL_GREEN):
-					newstate = IntersectionState.HORIZONTAL_YELLOW
-				elif (intersection.currentstate == IntersectionState.HORIZONTAL_LEFT_TURN):
-					newstate = IntersectionState.HORIZONTAL_LEFT_TURN_YELLOW
-				elif (intersection.currentstate == IntersectionState.VERTICAL_GREEN):
-					newstate = IntersectionState.VERTICAL_YELLOW
-				elif (intersection.currentstate == IntersectionState.VERTICAL_LEFT_TURN):
-					newstate = IntersectionState.VERTICAL_LEFT_TURN_YELLOW
-				elif (intersection.currentstate == IntersectionState.HORIZONTAL_YELLOW or intersection.currentstate == IntersectionState.HORIZONTAL_LEFT_TURN_YELLOW or intersection.currentstate == IntersectionState.VERTICAL_YELLOW or intersection.currentstate == IntersectionState.VERTICAL_LEFT_TURN_YELLOW):
-					newstate = IntersectionState.RED
-				elif (intersection.currentstate == IntersectionState.RED):
-					if (intersection.nextchannel == IntersectionChannel.HORIZONTAL):
-						newstate = IntersectionState.HORIZONTAL_GREEN
-					elif (intersection.nextchannel == IntersectionChannel.VERTICAL):
-						newstate = IntersectionState.VERTICAL_GREEN
-					elif (intersection.nextchannel == IntersectionChannel.VERTICAL_LEFT_TURN):
-						newstate = IntersectionState.VERTICAL_LEFT_TURN
-					elif (intersection.nextchannel == IntersectionChannel.HORIZONTAL_LEFT_TURN): 
-						newstate = IntersectionState.HORIZONTAL_LEFT_TURN
+		for eachList in self.intersections:
+			for intersection in eachList:
+				if (intersection.stateMatchesNextChannel()):
 					intersection.popOperation()
-				intersection.intersection.updateState(newstate)
-				intersection.lastUpdatedTime = datetime.datetime.now()
+				if (intersection.readyToUpdate() and not intersection.stateMatchesNextChannel()):
+					if (intersection.currentstate == IntersectionState.HORIZONTAL_GREEN):
+						newstate = IntersectionState.HORIZONTAL_YELLOW
+					elif (intersection.currentstate == IntersectionState.HORIZONTAL_LEFT_TURN):
+						newstate = IntersectionState.HORIZONTAL_LEFT_TURN_YELLOW
+					elif (intersection.currentstate == IntersectionState.VERTICAL_GREEN):
+						newstate = IntersectionState.VERTICAL_YELLOW
+					elif (intersection.currentstate == IntersectionState.VERTICAL_LEFT_TURN):
+						newstate = IntersectionState.VERTICAL_LEFT_TURN_YELLOW
+					elif (intersection.currentstate == IntersectionState.HORIZONTAL_YELLOW or intersection.currentstate == IntersectionState.HORIZONTAL_LEFT_TURN_YELLOW or intersection.currentstate == IntersectionState.VERTICAL_YELLOW or intersection.currentstate == IntersectionState.VERTICAL_LEFT_TURN_YELLOW):
+						newstate = IntersectionState.RED
+					elif (intersection.currentstate == IntersectionState.RED):
+						if (intersection.nextchannel == IntersectionChannel.HORIZONTAL):
+							newstate = IntersectionState.HORIZONTAL_GREEN
+						elif (intersection.nextchannel == IntersectionChannel.VERTICAL):
+							newstate = IntersectionState.VERTICAL_GREEN
+						elif (intersection.nextchannel == IntersectionChannel.VERTICAL_LEFT_TURN):
+							newstate = IntersectionState.VERTICAL_LEFT_TURN
+						elif (intersection.nextchannel == IntersectionChannel.HORIZONTAL_LEFT_TURN): 
+							newstate = IntersectionState.HORIZONTAL_LEFT_TURN
+						intersection.popOperation()
+					intersection.intersection.updateState(newstate)
+					intersection.lastUpdatedTime = datetime.datetime.now()
 
-def getUpdates(intersection_count, queue):
+	def nextIntersection(self, intersection_index, direction):
+		if (not isinstance(intersection_index, int)):
+			raise TypeError(f"IntersectionManager.nextIntersection() was passed a {type(intersection_index)} as its 'intersection_index' argument. Expected an int.")
+		else:
+			if (0 <= intersection_index < self.intersections.len_2D()):
+				pass
+			else:
+				raise ValueError(f"IntersectionManager.nextIntersection() was passed {intersection_index} as its 'intersection_index' argument. Expected a valid index, between 0 and {self.intersections.len_2D() - 1}.")
+
+		if (not isinstance(direction, Direction)):
+			raise TypeError(f"IntersectionManager.nextIntersection() was passed a {type(direction)} as its 'direction' argument. Expected a Direction.")
+
+		if (direction == Direction.LEFT):
+			return intersection_index - 1
+		if (direction == Direction.RIGHT):
+			return intersection_index + 1
+		if (direction == Direction.UP):
+			return intersection_index - 4
+		if (direction == Direction.DOWN):
+			return intersection_index + 4
+
+class Vehicle():
+	def __init__(self, window, horizontal_street, vertical_street, direction):
+		if (not isinstance(window, GraphWin)):
+			raise TypeError(f"Vehicle() was passed a {type(window)} as its 'window' parameter. Expected a GraphWin.")
+		else:
+			self.window = window
+
+		if (not isinstance(horizontal_street, HorizontalStreet)):
+			raise TypeError(f"Vehicle() was passed a {type(horizontal_street)} as its 'horizontal_street' parameter. Expected a HorizontalStreet.")
+		else:
+			self.horizontal_street = horizontal_street
+
+		if (not isinstance(vertical_street, VerticalStreet)):
+			raise TypeError(f"Vehicle() was passed a {type(vertical_street)} as its 'vertical_street' parameter. Expected a VerticalStreet.")
+		else:
+			self.vertical_street = vertical_street
+
+		if (not isinstance(direction, Direction)):			
+			raise TypeError(f"Vehicle() was passed a {type(direction)} as its 'direction' parameter. Expected a Direction.")
+		else:
+			self.direction = direction
+
+		self.updateTriangle()
+		self.triangle.setFill("yellow")
+
+	def draw(self):
+		self.triangle.undraw()
+		self.triangle.setFill("yellow")
+		self.triangle.draw(self.window)
+
+	def updateTriangle(self):
+		if (self.direction == Direction.RIGHT):
+			self.triangle = Polygon([Point(self.vertical_street.x_pos - 6, self.horizontal_street.y_pos - 6), Point(self.vertical_street.x_pos - 6, self.horizontal_street.y_pos + 12), Point(self.vertical_street.x_pos + 12, self.horizontal_street.y_pos + 3)])
+		elif (self.direction == Direction.LEFT):
+			self.triangle = Polygon([Point(self.vertical_street.x_pos + 12, self.horizontal_street.y_pos - 6), Point(self.vertical_street.x_pos + 12, self.horizontal_street.y_pos + 12), Point(self.vertical_street.x_pos - 6, self.horizontal_street.y_pos + 3)])	
+		elif (self.direction == Direction.DOWN):
+			self.triangle = Polygon([Point(self.vertical_street.x_pos - 6, self.horizontal_street.y_pos - 6), Point(self.vertical_street.x_pos + 12, self.horizontal_street.y_pos - 6), Point(self.vertical_street.x_pos + 3, self.horizontal_street.y_pos + 12)])
+		elif (self.direction == Direction.UP):
+			self.triangle = Polygon([Point(self.vertical_street.x_pos - 6, self.horizontal_street.y_pos + 12), Point(self.vertical_street.x_pos + 12, self.horizontal_street.y_pos + 12), Point(self.vertical_street.x_pos + 3, self.horizontal_street.y_pos - 6)])
+
+class Route():
+	def __init__(self, manager, initial_intersection, initial_direction, turns, update_queue, undraw_queue):
+		if (isinstance(manager, IntersectionManager)):
+			self.manager = manager
+		else:
+			raise TypeError(f"Route() was passed a {type(manager)} as its 'manager' argument. Expected an IntersectionManager.")
+
+		if (isinstance(initial_intersection, int)):
+			if (0 <= initial_intersection < self.manager.intersections.len_2D()):
+				self.active_intersection = initial_intersection
+			else:
+				raise ValueError(f"Route() was passed {initial_intersection} as its 'initial_intersection' argument. Please pass a valid index of self.manager.")
+		else:
+			raise TypeError(f"Route() was passed a {type(initial_intersection)} as its 'initial_intersection' argument. Expected an int.")
+
+		if (isinstance(initial_direction, Direction)):
+			self.active_direction = initial_direction
+		else:
+			raise TypeError(f"Route() was passed a {type(initial_direction)} as its 'initial_direction' argument. Expected a Direction.")
+
+		if (isinstance(turns, list)):
+			if (isinstance(turns[0], Turn)):
+				self.turns = turns
+			else:
+				raise TypeError(f"Route() was passed a list of {type(turns[0])} as its 'turns' argument. Expected a list of Turns.")
+		else:
+			raise TypeError(f"Route() was passed a {type(turns)} as its 'turns' argument. Expected a list of Turns.")
+
+
+		self.update_queue = update_queue
+		self.undraw_queue = undraw_queue
+
+		self.vehicle = Vehicle(self.manager.intersections.index_2D(self.active_intersection).intersection.window, self.manager.intersections.index_2D(self.active_intersection).intersection.horizontal_street, self.manager.intersections.index_2D(self.active_intersection).intersection.vertical_street, self.active_direction)
+		self.update_queue.put(self)
+
+	def pop(self):
+		if (len(self.turns) > 0):
+			active_turn = self.turns.pop(0)
+			new_direction = self.active_direction.turn(active_turn)
+			next_channel = self.active_direction.getIntersectionChannel(new_direction)
+			self.manager.pushOperation(self.active_intersection, next_channel, 2)
+			self.active_intersection = self.manager.nextIntersection(self.active_intersection, new_direction)
+			self.active_direction = new_direction
+			self.undraw_queue.put(self.vehicle.triangle)
+			self.vehicle.horizontal_street = self.manager.intersections.index_2D(self.active_intersection).intersection.horizontal_street
+			self.vehicle.vertical_street = self.manager.intersections.index_2D(self.active_intersection).intersection.vertical_street
+			self.vehicle.direction = self.active_direction
+			self.vehicle.updateTriangle()
+			self.update_queue.put(self)
+			#TODOS: See below
+			#	1. 	Update self.active_intersection. Will need to write an IntersectionManager.nextIntersection() function to handle this.
+			#	2.	Update self.active_direction to equal new_direction
+			# 	3. 	After this, update the main functions to use this new functionality rather than manually getting operations from the command line.
+
+def updateFromRoutes(manager, update_queue, undraw_queue):
+	routes = [Route(manager, 0, Direction.RIGHT, [Turn.STRAIGHT, Turn.RIGHT, Turn.STRAIGHT, Turn.LEFT, Turn.STRAIGHT], update_queue, undraw_queue), Route(manager, 15, Direction.UP, [Turn.STRAIGHT, Turn.STRAIGHT], update_queue, undraw_queue)]
 	while True:
-		correct_input = False
-		while (not correct_input):
-			intersection = input("Which intersection would you like to change? Input 0-15: ")
-			try:
-				intersection = int(intersection)
-				if intersection in range(0, 16):
-					correct_input = True
-				else:
-					print("Please type an integer from 0 to 15.")
-			except ValueError: 
-				print("Please type an integer")
-
-		correct_input = False
-		while (not correct_input):
-			channel = input("What should be the new IntersectionChannel? Input an IntersectionChannel: ")
-			channel = channel.upper()
-			if (IntersectionChannel.caseOf(channel) != None):
-				channel = IntersectionChannel.caseOf(channel)
-				correct_input = True
-			else: 
-				print("Please type a valid IntersectionChannel.")
-		queue.put((intersection, channel))
+		time.sleep(7)
+		for route in routes:
+			route.pop()
 
 def main(): 
-	win = GraphWin("Street Visualization", 500, 500)
+	win = GraphWin("Street Visualization", 600, 600)
 	win.setBackground(color_rgb(143, 242, 229))
 
-	horizontal_street_1 = HorizontalStreet(100, win, 5)
+	horizontal_street_1 = HorizontalStreet(120, win, 6)
 	horizontal_street_1.draw()
 
-	horizontal_street_2 = HorizontalStreet(200, win, 5)
+	horizontal_street_2 = HorizontalStreet(240, win, 6)
 	horizontal_street_2.draw()
 
-	horizontal_street_3 = HorizontalStreet(300, win, 5)
+	horizontal_street_3 = HorizontalStreet(360, win, 6)
 	horizontal_street_3.draw()
 
-	horizontal_street_4 = HorizontalStreet(400, win, 5)
+	horizontal_street_4 = HorizontalStreet(480, win, 6)
 	horizontal_street_4.draw()
 
-	vertical_street_1 = VerticalStreet(100, win, 5)
+	vertical_street_1 = VerticalStreet(120, win, 6)
 	vertical_street_1.draw()
 
-	vertical_street_2 = VerticalStreet(200, win, 5)
+	vertical_street_2 = VerticalStreet(240, win, 6)
 	vertical_street_2.draw()
 
-	vertical_street_3 = VerticalStreet(300, win, 5)
+	vertical_street_3 = VerticalStreet(360, win, 6)
 	vertical_street_3.draw()
 
-	vertical_street_4 = VerticalStreet(400, win , 5)
+	vertical_street_4 = VerticalStreet(480, win , 6)
 	vertical_street_4.draw()
 
 	intersection_1_1 = Intersection(horizontal_street_1, vertical_street_1, win)
@@ -428,16 +593,20 @@ def main():
 	intersection_4_3 = Intersection(horizontal_street_4, vertical_street_3, win)
 	intersection_4_4 = Intersection(horizontal_street_4, vertical_street_4, win)
 
-	manager = IntersectionManager([intersection_1_1, intersection_1_2, intersection_1_3, intersection_1_4, intersection_2_1, intersection_2_2, intersection_2_3, intersection_2_4, intersection_3_1, intersection_3_2, intersection_3_3, intersection_3_4, intersection_4_1, intersection_4_2, intersection_4_3, intersection_4_4])
+	manager = IntersectionManager([[intersection_1_1, intersection_1_2, intersection_1_3, intersection_1_4], [intersection_2_1, intersection_2_2, intersection_2_3, intersection_2_4], [intersection_3_1, intersection_3_2, intersection_3_3, intersection_3_4], [intersection_4_1, intersection_4_2, intersection_4_3, intersection_4_4]])
 
-	operation_queue = queue.Queue()
-	operation_get_thread = threading.Thread(target=getUpdates, args=(16, operation_queue))
-	operation_get_thread.start()
+	triangle_update_queue = queue.Queue()
+	triangle_undraw_queue = queue.Queue()
+	route_manager_thread = threading.Thread(target=updateFromRoutes, args=(manager, triangle_update_queue, triangle_undraw_queue))
+	route_manager_thread.start()
 
 	while True:
-		if not operation_queue.empty():
-			operation = operation_queue.get()
-			manager.pushOperation(operation[0], operation[1], 5)
+		if not triangle_undraw_queue.empty():
+			triangle = triangle_undraw_queue.get()
+			triangle.undraw()
+		if not triangle_update_queue.empty():
+			route = triangle_update_queue.get()
+			route.vehicle.draw()
 		manager.update()
 
 main()
