@@ -7,7 +7,6 @@ import random
 import math
 from enum import Enum
 
-# TODO: Scale everything up for presentation
 
 class RandableEnum(Enum):
 	@classmethod
@@ -533,10 +532,6 @@ class Route():
 			self.vehicle.direction = self.active_direction
 			self.vehicle.updateTriangle()
 			self.update_queue.put(self)
-			#TODOS: See below
-			#	1. 	Update self.active_intersection. Will need to write an IntersectionManager.nextIntersection() function to handle this.
-			#	2.	Update self.active_direction to equal new_direction
-			# 	3. 	After this, update the main functions to use this new functionality rather than manually getting operations from the command line.
 
 def updateFromRoutes(manager, update_queue, undraw_queue):
 	routes = [Route(manager, 0, Direction.RIGHT, [Turn.STRAIGHT, Turn.RIGHT, Turn.STRAIGHT, Turn.LEFT, Turn.STRAIGHT], update_queue, undraw_queue), Route(manager, 15, Direction.UP, [Turn.STRAIGHT, Turn.STRAIGHT], update_queue, undraw_queue)]

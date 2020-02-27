@@ -1,3 +1,6 @@
+# Note: This is not AmbuLights code. This is an open-source graphics library that our project uses.
+# It's in this folder and synced to github as unlike other libraries, it can't be installed via pip.
+
 # graphics.py
 """Simple object oriented graphics library  
 
