@@ -589,6 +589,8 @@ def main():
 	intersection_4_4 = Intersection(horizontal_street_4, vertical_street_4, win)
 
 	manager = IntersectionManager([[intersection_1_1, intersection_1_2, intersection_1_3, intersection_1_4], [intersection_2_1, intersection_2_2, intersection_2_3, intersection_2_4], [intersection_3_1, intersection_3_2, intersection_3_3, intersection_3_4], [intersection_4_1, intersection_4_2, intersection_4_3, intersection_4_4]])
+	
+	win.getMouse()
 
 	triangle_update_queue = queue.Queue()
 	triangle_undraw_queue = queue.Queue()
